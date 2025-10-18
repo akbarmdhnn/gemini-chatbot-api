@@ -57,7 +57,7 @@ app.post('/generate-text', async (req, res) => {
 
         res.status(200).json({
             success: true,
-            message: 'Berhasil dijawab gemini',
+            message: 'Berhasil dijawab Gemini',
             data: aiResponse.text
         });
     } catch (e) {
