@@ -6,7 +6,21 @@ import cors from "cors";
 import multer from "multer";
 import { GoogleGenAI } from "@google/genai";
 
+
+// session 5 - import path/url package
+
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+
+
+
 import 'dotenv/config'; // untuk membaca file .env
+
+
+
+
+
 // inisialisasi app
 //
 // deklasrasi variable di JavaScript
@@ -19,12 +33,24 @@ const upload = multer(); // akan dgunakan dalam recording
 
 const ai = new GoogleGenAI({ }); // instantion menjadi object intance (oop -- object oriented programming)
 
+
+
+// session 5 - penambahan path
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // middleware
 //
 // contoh penggunaan middleware
 
 app.use(cors()); //inisiasi cors  sebagai middleware
 app.use(express.json()); // untuk parsing json
+
+
+// Session 5 - inisialisasi static directory
+
+app.use(express.static(path.join(__dirname, 'static')));
 
 
 // inisialisasi routing
@@ -71,6 +97,38 @@ app.post('/generate-text', async (req, res) => {
     }
 });
 
+
+
+app.post("/api/chat", async (req, res) => {
+    const { conversation } = req.body;
+
+    try { // satpam 1
+        if(Array.isArray(conversation)) {
+            throw new Error("Conversation harus berupa string, bukan array.");
+        }
+
+
+
+        // satpam 2
+
+        let messageIsValid = true;
+        if (conversation.length === 0) {
+            throw new Error("Conversation tidak boleh kosong.");
+        }
+
+        for (let i = 0; i < message.length; i++) {
+            const message = conversation[i]
+        }
+
+        conversation.forEach((message) => {
+            if ( !message|| typeof message !== "object" ) {
+                messageIsValid = false;
+                return;
+            }
+        })
+    } catch (e) {}
+
+})
 
 // jalankan server
 app.listen(3000, () => {
