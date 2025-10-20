@@ -50,14 +50,14 @@ app.post('/generate-text', async (req, res) => {
                 { text: prompt }
             ],
             config: {
-                systemInstruction: 'Harus di bls bahasa sunda.'
+                systemInstruction: 'Harus di bls bahasa indonesia.'
             }
         });
 
 
         res.status(200).json({
             success: true,
-            message: 'Berhasil dijawab Gemini',
+            message: 'Berhasil dijawab',
             data: aiResponse.text
         });
     } catch (e) {
