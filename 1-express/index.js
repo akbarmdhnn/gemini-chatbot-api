@@ -125,7 +125,34 @@ app.post("/api/chat", async (req, res) => {
                 messageIsValid = false;
                 return;
             }
-        })
+
+            
+            const keys = Object.keys(message);  
+            const objectHasValidKeys = keys.every(key => ['text', 'role'],includes(key));
+
+            if (keys.length !== 2 || objectHasValidKeys)   {
+                messageIsValid = false;
+                return;
+            }
+
+
+            const { text, role } = message;
+
+            if (!['model', 'user'].includes(role)) {
+                messageIsValid = false;
+                return;
+            }
+
+            if (!text || typeof text !== "string") {
+                messageIsValid = false;
+                return;
+            }
+
+        });
+
+        //prosesnya
+
+        
     } catch (e) {}
 
 })
