@@ -1,165 +1,207 @@
-// import dependencies
+// import semua library yg dibutuhin
 //
-
 import express from "express";
 import cors from "cors";
 import multer from "multer";
 import { GoogleGenAI } from "@google/genai";
-
-
-// session 5 - import path/url package
-
+// Sesi 5 - import path/url buat ngurusin path file
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+// import dotenv buat baca file .env
+import "dotenv/config";
 
-
-
-import 'dotenv/config'; // untuk membaca file .env
-
-
-
-
-
-// inisialisasi app
+// inisialisasi aplikasi
 //
-// deklasrasi variable di JavaScript
-// [const | let] nama_variable = [value]
-// [var] --> 
-//app = "budi"; // error karena const tidak bisa di re-assign
+// --- Catatan Deklarasi Variabel ---
+// [const|let] [namaVariable] = [value]
+// [var] --> udah ga dipake, diganti const/let
+//
+// [const] --> ga bisa diubah lagi
+// [let]   --> bisa diubah-ubah (re-assignment)
+//
+// Tipe data: number, string, boolean, undefined, null
+//
 
 const app = express();
-const upload = multer(); // akan dgunakan dalam recording
+const upload = multer(); // ini buat upload file nanti
 
-const ai = new GoogleGenAI({ }); // instantion menjadi object intance (oop -- object oriented programming)
+const ai = new GoogleGenAI({}); // bikin instance AI-nya
 
-
-
-// session 5 - penambahan path
-
+// Sesi 5 - setup path buat __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// middleware
+// inisialisasi middleware
 //
-// contoh penggunaan middleware
+app.use(cors()); // middleware buat CORS, biar ga error pas di-fetch
+app.use(express.json()); // middleware buat baca JSON dari body request
 
-app.use(cors()); //inisiasi cors  sebagai middleware
-app.use(express.json()); // untuk parsing json
-
-
-// Session 5 - inisialisasi static directory
-
-app.use(express.static(path.join(__dirname, 'static')));
-
+// Sesi 5 - inisialisasi folder 'static'
+app.use(
+  // express.static(rootDirectory, options)
+  express.static(
+    path.join(__dirname, "static"), // folder 'static' jadi root
+    // jadi nanti bisa akses file di dalamnya lgsg
+    // dari browser, contoh: /index.html
+  ),
+);
 
 // inisialisasi routing
-// contoh routing: app.get, app.post, app.put, dll
+//
+// --- Catatan HTTP Methods ---
+// GET, PUT, POST, PATCH, DELETE, OPTIONS, HEAD
+//
+// --- Catatan Function ---
+// function biasa --> function namaFunction() {}
+// arrow function --> () => {}
+// async function --> async () => {}
+//
+app.post("/generate-text", async (req, res) => {
+  // ambil data 'prompt' dari body
+  const { prompt } = req.body; // pake object destructuring
 
-app.post('/generate-text', async (req, res) => {
-    // terima jeroannya, lalu cek disini
-    const { prompt } = req.body;  // object destructuring
-    //satpamnya 
-    if (!prompt || typeof prompt !== 'string') { // cek apakah prompt ada isinya
+  // debugging, cek prompt masuk atau ngga
+  console.log({ prompt });
+
+  // "satpam" buat ngecek input
+  if (!prompt || typeof prompt !== "string") {
     res.status(400).json({
-        success: false,
-        message: 'Prompt harus berupa string!',
-        data: null
+      success: false,
+      message: "Prompt harus berupa string!",
+      data: null,
     });
-    }
+    return; // stop eksekusi kalo error
+  }
 
+  // bagian utamanya
+  try {
+    const aiResponse = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{ text: prompt }], // kirim prompt-nya
+      // config tambahan buat AI
+      config: {
+        systemInstruction:
+          "Harus dibalas dalam bahasa Jepang atau Sunda secara acak.",
+      },
+    });
 
-    try { 
-        const aiResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: [
-                { text: prompt }
-            ],
-            config: {
-                systemInstruction: 'Harus di bls bahasa indonesia.'
-            }
-        });
-
-
-        res.status(200).json({
-            success: true,
-            message: 'Berhasil dijawab',
-            data: aiResponse.text
-        });
-    } catch (e) {
-        // Semua kode penanganan error HARUS ada di DALAM sini
-        console.log(e);
-        res.status(500).json({
-            success: false,
-            message: 'Gagal mendapatkan respon dari Gemini',
-            data: null // Sebaiknya sertakan detail error: e.message
-        });
-    }
+    // kalo berhasil, kirim jawaban AI
+    res.status(200).json({
+      success: true,
+      message: "Berhasil dijawab sama Gemini nih!",
+      data: aiResponse.text,
+    });
+  } catch (e) {
+    // kalo gagal, kirim pesan error
+    console.log(e);
+    res.status(500).json({
+      success: false,
+      message: "Gagal gan, server-nya kayaknya lagi bermasalah!",
+      data: null,
+    });
+  }
 });
 
-
-
+// fitur chat
+// endpoint: POST /api/chat
 app.post("/api/chat", async (req, res) => {
-    const { conversation } = req.body;
+  // ambil 'conversation' dari body
+  const { conversation } = req.body;
 
-    try { // satpam 1
-        if(Array.isArray(conversation)) {
-            throw new Error("Conversation harus berupa string, bukan array.");
-        }
+  try {
+    // Satpam #1: Cek dulu, 'conversation' harus array
+    if (!Array.isArray(conversation)) {
+      throw new Error("Conversation harus berupa array!");
+    }
 
+    // Satpam #2: Cek isi conversationnya
+    let messageIsValid = true; // asumsi awalnya valid
 
+    // Kalo array-nya kosong, lempar error
+    if (conversation.length === 0) {
+      throw new Error("Conversation tidak boleh kosong!");
+    }
 
-        // satpam 2
+    // Cek tiap message di dalem array
+    conversation.forEach((message) => {
+      // Kondisi #1 -- message harus object & ga boleh null
+      if (!message || typeof message !== "object") {
+        messageIsValid = false;
+        return;
+      }
 
-        let messageIsValid = true;
-        if (conversation.length === 0) {
-            throw new Error("Conversation tidak boleh kosong.");
-        }
+      // Cek keys-nya, harus 'text' dan 'role'
+      const keys = Object.keys(message);
+      const objectHasValidKeys = keys.every((key) =>
+        ["text", "role"].includes(key),
+      );
 
-        for (let i = 0; i < message.length; i++) {
-            const message = conversation[i]
-        }
+      // .every() --> semua harus true
+      // .some()  --> salah satu true aja cukup
 
-        conversation.forEach((message) => {
-            if ( !message|| typeof message !== "object" ) {
-                messageIsValid = false;
-                return;
-            }
+      // Kondisi #2 -- jumlah keys harus 2 & namanya harus valid
+      if (keys.length !== 2 || !objectHasValidKeys) {
+        messageIsValid = false;
+        return;
+      }
 
-            
-            const keys = Object.keys(message);  
-            const objectHasValidKeys = keys.every(key => ['text', 'role'],includes(key));
+      const { text, role } = message;
 
-            if (keys.length !== 2 || objectHasValidKeys)   {
-                messageIsValid = false;
-                return;
-            }
+      // Kondisi 3A -- role harus 'model' atau 'user'
+      if (!["model", "user"].includes(role)) {
+        messageIsValid = false;
+        return;
+      }
 
+      // Kondisi 3B -- text harus string & ga boleh kosong
+      if (!text || typeof text !== "string") {
+        messageIsValid = false;
+        return;
+      }
+    });
 
-            const { text, role } = message;
+    // Kalo ada satu aja yg ga valid, lempar error
+    if (!messageIsValid) {
+      throw new Error("Message harus valid!");
+    }
 
-            if (!['model', 'user'].includes(role)) {
-                messageIsValid = false;
-                return;
-            }
+    // Kalo lolos satpam, lanjut proses
+    // Ubah format data biar sesuai sama maunya Gemini API
+    const contents = conversation.map(({ role, text }) => ({
+      role,
+      parts: [{ text }],
+    }));
 
-            if (!text || typeof text !== "string") {
-                messageIsValid = false;
-                return;
-            }
+    // Kirim ke Gemini
+    const aiResponse = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents, // kirim semua history conversation
+      config: {
+        systemInstruction: "Harus membalas dengan bahasa Sunda.",
+      },
+    });
 
-        });
-
-        //prosesnya
-
-        
-    } catch (e) {}
-
-})
-
-// jalankan server
-app.listen(3000, () => {
-    console.log('Ini berjalan di port 3000');
+    // Kirim jawaban AI ke frontend
+    res.status(200).json({
+      success: true,
+      message: "Berhasil dibalas oleh Google Gemini!",
+      data: aiResponse.text,
+    });
+  } catch (e) {
+    // Kalo ada error di try, tangkep di sini
+    res.status(500).json({
+      success: false,
+      message: e.message,
+      data: null,
+    });
+  }
 });
 
-
+// server-nya harus dijalanin
+app.listen(
+  3000, // port 3000
+  () => {
+    console.log("I LOVE YOU 3000"); // nandain server udah jalan
+  },
+);
